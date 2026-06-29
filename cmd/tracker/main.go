@@ -3,20 +3,25 @@ package main
 import (
 	"errors"
 	"flag"
-	"internal/strconv"
+	"strconv"
 	"strings"
+	"task_tracker/internal/storage"
 	"task_tracker/internal/task"
 
 	"github.com/fatih/color"
 )
 
-// тут должны остаться только ошибки пользовательского ввода
+
 var (
 	WrongInputError  = errors.New("WrongInputError")
 	EmptyStringError = errors.New("EmptyStringError")
 )
 
+
 func main() {
+	jsonStorage := storage.NewJSONStorage("../../tasks.json")
+	taskManager := task.NewTaskManaher(jsonStorage)
+
 	var err error
 	flag.Parse()
 	cmd := flag.Arg(0)
@@ -24,22 +29,22 @@ func main() {
 	switch cmd {
 	case "add":
 		title := strings.Join(flag.Args()[1:], " ")
-		err = addTask(title)
+		err = addTask(taskManager, title)
 	case "list":
 		status := flag.Arg(1)
-		err = listTask(status)
+		err = listTask(taskManager, status)
 	case "mark":
 		id := flag.Arg(1)
 		status := flag.Arg(2)
-		err = updateTask(id, "status", status)
+		err = updateTask(taskManager, id, "status", status)
 	case "update":
 		id := flag.Arg(1)
 		field := flag.Arg(2)
 		newValue := flag.Arg(3)
-		err = updateTask(id, field, newValue)
+		err = updateTask(taskManager, id, field, newValue)
 	case "delete":
 		id := flag.Arg(1)
-		err = clearTask(id)
+		err = clearTask(taskManager, id)
 	default:
 		err = WrongInputError
 	}
@@ -48,19 +53,19 @@ func main() {
 	}
 }
 
-func addTask(title string) (err error) {
+func addTask(taskManager *task.TaskManager, title string) (err error) {
 	if title == "" {
 		return EmptyStringError
 	}
-	err = task.CreateTask(title)
+	err = taskManager.CreateTask(title)
 	if err == nil {
 		color.Green("Saved")
 	}
 	return
 }
 
-func listTask(status string) (err error) {
-	tasks, err := task.ListFilteredByStatus(status)
+func listTask(taskManager *task.TaskManager, status string) (err error) {
+	tasks, err := taskManager.ListFilteredByStatus(status)
 	if err != nil {
 		return
 	}
@@ -71,28 +76,28 @@ func listTask(status string) (err error) {
 	return
 }
 
-func updateTask(id string, field string, newValue string) (err error) {
+func updateTask(taskManager *task.TaskManager, id string, field string, newValue string) (err error) {
 	if newValue == "" || id == "" || field == "" {
 		return EmptyStringError
 	}
-	intID, err = convertToInt(id)
+	intID, err := convertToInt(id)
 	if err != nil {
 		return
 	}
 
-	err = task.RewriteField(intID, field, newValue)
+	err = taskManager.RewriteField(intID, field, newValue)
 	if err == nil {
 		color.Green("Task has been updated")
 	}
 	return
 }
 
-func clearTask(id string) (err error) {
-	intID, err = convertToInt(id)
+func clearTask(taskManager *task.TaskManager, id string) (err error) {
+	intID, err := convertToInt(id)
 	if err != nil {
 		return
 	}
-	err = task.DeleteTask(intID)
+	err = taskManager.DeleteTask(intID)
 	if err == nil {
 		color.Green("Task has been deleted")
 	}
