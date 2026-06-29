@@ -1,48 +1,112 @@
 package task
 
-import "time"
+import (
+	"errors"
+	"task_tracker/internal/storage"
+	"time"
+)
 
-type Task struct {
-	ID        int       `json:"id"`
-	Task      string    `json:"task"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
+var (
+	CantModifyTheTaskError  = errors.New("CantModifyTheTaskError")
+	NoTaskHasBeenFoundError = errors.New("NoTaskHasBeenFoundError")
+	WrongStatusError        = errors.New("WrongStatusError")
+)
+
+
+
+type TaskManager struct {
+	storage storage.Storage
 }
 
-// Тут про бизнес логику
-// Создание, обновление, удаление задач
-// Валидацию данных
-// Поиск и фильтрацию
-// Логику предметной области
+func (s *TaskManager) CreateTask(taskText string) (err error) {
+	tasks, err := s.storage.Load()
+	if err != nil {
+		return
+	}
 
-func CreateTask(title string) (err error) {
+	newTask := Task{
+		ID:        len(tasks) + 1,
+		Task:      taskText,
+		Status:    "pending",
+		CreatedAt: time.Now(),
+	}
+	tasks = append(tasks, newTask)
+	err = s.storage.Save()
 	return err
 }
 
-func GetTask(id string) (task Task, found bool, err error) {
-	return task, found, err
+func (s *TaskManager) GetTask(id int) (task Task, err error) {
+	tasks, err := s.storage.Load()
+	if err != nil {
+		return
+	}
+	for _, v := range tasks {
+		if v.ID == id {
+			return v, err
+		}
+	}
+	return Task{}, NoTaskHasBeenFoundError
 }
 
-func ListAll() (err error) {
-	return err
-}
-
-func ListFilteredByStatus(status string) (list []Task, err error) {
+func (s *TaskManager) ListFilteredByStatus(status string) (list []Task, err error) {
+	if !checkStatus(status) {
+		return list, WrongStatusError
+	}
+	tasks, err := s.storage.Load()
+	if err != nil {
+		return
+	}
+	if status == "" {
+		return tasks, err
+	}
+	for _, v := range tasks {
+		if v.Status == status {
+			list = append(list, v)
+		}
+	}
 	return list, err
 }
 
-func RewriteField(task Task, field string, new string) (err error) {
+func (s *TaskManager) RewriteField(id int, field string, new string) (err error) {
+	task, err := s.GetTask(id)
+	if err != nil {
+		return
+	}
+
+	switch field {
+	case "task":
+		task.Task = new
+		err = s.storage.Save()
+	case "status":
+		task.Status = new
+		err = s.storage.Save()
+	default:
+		err = CantModifyTheTaskError
+	}
 	return err
 }
 
-func DeleteTask(task Task) (err error) {
+func (s *TaskManager) DeleteTask(id int) (err error) {
+	tasks, err := s.storage.Load()
+	if err != nil {
+		return
+	}
+
+	found := false
+	for i, v := range tasks {
+		if v.ID == id {
+			tasks = append(tasks[:i], tasks[i+1:]...)
+			err = s.storage.Save()
+			found = true
+			break
+		}
+	}
+	if !found {
+		err = NoTaskHasBeenFoundError
+	}
 	return err
 }
 
-// Тут будет основная логика, которая будет вызываться из парсерных функций
-
-// type Status struct {
-// 	Done bool
-// 	InProgress bool
-// 	NotDone bool
-// }
+func checkStatus(status string) bool {
+	return status == "pending" || status == "in progress" || status == "done" || status == ""
+}

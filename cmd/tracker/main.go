@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"flag"
+	"internal/strconv"
 	"strings"
 	"task_tracker/internal/task"
 
@@ -11,13 +12,9 @@ import (
 
 // тут должны остаться только ошибки пользовательского ввода
 var (
-	EmptyStringError        = errors.New("EmptyStringError")
-	WrongInputError         = errors.New("WrongInputError")
-	CantModifyTheTaskError  = errors.New("CantModifyTheTaskError")
-	NoTaskHasBeenFoundError = errors.New("NoTaskHasBeenFoundError")
+	WrongInputError  = errors.New("WrongInputError")
+	EmptyStringError = errors.New("EmptyStringError")
 )
-
-// Тут про ввод и вывод. Про основное взаимодействие с CLI
 
 func main() {
 	var err error
@@ -78,26 +75,12 @@ func updateTask(id string, field string, newValue string) (err error) {
 	if newValue == "" || id == "" || field == "" {
 		return EmptyStringError
 	}
-
-	// сделать проверку, что id число тут и везде, где нужно.
-	// Можно в целом сразу его в число и переводить при передачи аргумента
-	t, ok, err := task.GetTask(id)
+	intID, err = convertToInt(id)
 	if err != nil {
 		return
 	}
-	if !ok {
-		return NoTaskHasBeenFoundError
-	}
-	// Лучше сделать валидацию полей в task.go
-	switch field {
-	case "task":
-		err = task.RewriteField(t, "title", newValue)
-	case "status":
-		err = task.RewriteField(t, "status", newValue)
-	default:
-		err = CantModifyTheTaskError
-	}
 
+	err = task.RewriteField(intID, field, newValue)
 	if err == nil {
 		color.Green("Task has been updated")
 	}
@@ -105,14 +88,11 @@ func updateTask(id string, field string, newValue string) (err error) {
 }
 
 func clearTask(id string) (err error) {
-	t, ok, err := task.GetTask(id)
+	intID, err = convertToInt(id)
 	if err != nil {
 		return
 	}
-	if !ok {
-		return NoTaskHasBeenFoundError
-	}
-	err = task.DeleteTask(t)
+	err = task.DeleteTask(intID)
 	if err == nil {
 		color.Green("Task has been deleted")
 	}
@@ -125,11 +105,19 @@ func handleError(err error) {
 		color.Red("You provided an empty string")
 	case WrongInputError:
 		color.Red("Wrong input")
-	case CantModifyTheTaskError:
+	case task.CantModifyTheTaskError:
 		color.Red("This field does not exist or can't be modified")
-	case NoTaskHasBeenFoundError:
+	case task.NoTaskHasBeenFoundError:
 		color.Red("No task has been found")
 	default:
 		color.Red("%s\n", err)
 	}
+}
+
+func convertToInt(num string) (id int, err error) {
+	id, err = strconv.Atoi(num)
+	if err != nil {
+		err = WrongInputError
+	}
+	return
 }
