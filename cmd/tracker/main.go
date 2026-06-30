@@ -18,7 +18,7 @@ var (
 
 func main() {
 	jsonStorage := storage.NewJSONStorage("../../tasks.json")
-	taskManager := task.NewTaskManaher(jsonStorage)
+	taskManager := task.NewTaskManager(jsonStorage)
 
 	var err error
 	flag.Parse()

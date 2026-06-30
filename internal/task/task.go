@@ -17,7 +17,7 @@ type TaskManager struct {
 	storage storage.Storage
 }
 
-func NewTaskManaher(s storage.Storage) *TaskManager {
+func NewTaskManager(s storage.Storage) *TaskManager {
 	return &TaskManager{storage: s}
 }
 
@@ -72,7 +72,7 @@ func (s *TaskManager) RewriteField(id int, field string, new string) (err error)
 			case "status":
 				tasks[i].Status = new
 			default:
-				err = CantModifyTheTaskError
+				return CantModifyTheTaskError
 			}
 			found = true
 			break
