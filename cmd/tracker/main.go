@@ -11,12 +11,10 @@ import (
 	"github.com/fatih/color"
 )
 
-
 var (
 	WrongInputError  = errors.New("WrongInputError")
 	EmptyStringError = errors.New("EmptyStringError")
 )
-
 
 func main() {
 	jsonStorage := storage.NewJSONStorage("../../tasks.json")

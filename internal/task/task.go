@@ -2,6 +2,7 @@ package task
 
 import (
 	"errors"
+	"task_tracker/internal/models"
 	"task_tracker/internal/storage"
 	"time"
 )
@@ -12,10 +13,12 @@ var (
 	WrongStatusError        = errors.New("WrongStatusError")
 )
 
-
-
 type TaskManager struct {
 	storage storage.Storage
+}
+
+func NewTaskManaher(s storage.Storage) *TaskManager {
+	return &TaskManager{storage: s}
 }
 
 func (s *TaskManager) CreateTask(taskText string) (err error) {
@@ -24,31 +27,18 @@ func (s *TaskManager) CreateTask(taskText string) (err error) {
 		return
 	}
 
-	newTask := Task{
+	newTask := models.Task{
 		ID:        len(tasks) + 1,
 		Task:      taskText,
 		Status:    "pending",
 		CreatedAt: time.Now(),
 	}
 	tasks = append(tasks, newTask)
-	err = s.storage.Save()
+	err = s.storage.Save(tasks)
 	return err
 }
 
-func (s *TaskManager) GetTask(id int) (task Task, err error) {
-	tasks, err := s.storage.Load()
-	if err != nil {
-		return
-	}
-	for _, v := range tasks {
-		if v.ID == id {
-			return v, err
-		}
-	}
-	return Task{}, NoTaskHasBeenFoundError
-}
-
-func (s *TaskManager) ListFilteredByStatus(status string) (list []Task, err error) {
+func (s *TaskManager) ListFilteredByStatus(status string) (list []models.Task, err error) {
 	if !checkStatus(status) {
 		return list, WrongStatusError
 	}
@@ -68,22 +58,32 @@ func (s *TaskManager) ListFilteredByStatus(status string) (list []Task, err erro
 }
 
 func (s *TaskManager) RewriteField(id int, field string, new string) (err error) {
-	task, err := s.GetTask(id)
+	tasks, err := s.storage.Load()
 	if err != nil {
 		return
 	}
 
-	switch field {
-	case "task":
-		task.Task = new
-		err = s.storage.Save()
-	case "status":
-		task.Status = new
-		err = s.storage.Save()
-	default:
-		err = CantModifyTheTaskError
+	found := false
+	for i := range tasks {
+		if tasks[i].ID == id {
+			switch field {
+			case "task":
+				tasks[i].Task = new
+			case "status":
+				tasks[i].Status = new
+			default:
+				err = CantModifyTheTaskError
+			}
+			found = true
+			break
+		}
 	}
-	return err
+
+	if !found {
+		return NoTaskHasBeenFoundError
+	}
+
+	return s.storage.Save(tasks)
 }
 
 func (s *TaskManager) DeleteTask(id int) (err error) {
@@ -96,7 +96,7 @@ func (s *TaskManager) DeleteTask(id int) (err error) {
 	for i, v := range tasks {
 		if v.ID == id {
 			tasks = append(tasks[:i], tasks[i+1:]...)
-			err = s.storage.Save()
+			err = s.storage.Save(tasks)
 			found = true
 			break
 		}
