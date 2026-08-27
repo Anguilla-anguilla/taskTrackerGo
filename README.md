@@ -17,8 +17,13 @@ A simple CLI task tracker written in Go.
 
 ## Commands
 `add` - Add a new task 
+
 `list` - List all tasks 
+
 `list [status]` - List tasks by status
+
 `update [id] [field] [value]` - Update task field
+
 `update [id] status [value]` - Update task status
+
 `delete [id]` - Delete a task
